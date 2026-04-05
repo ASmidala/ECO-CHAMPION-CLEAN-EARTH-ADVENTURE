@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Eco Champions - Stage 5</title>
+<style>
+    body { margin:0; background:black; }
+    canvas { display:block; margin:auto; background:#222; }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="1200" height="700"></canvas>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let W = canvas.width;
+let H = canvas.height;
+let GROUND_Y = H * 0.65;
+
+// ---------------- STATE ----------------
+let plantedTrees = [];
+let targetTrees = 1000;
+let score = 0;
+
+let bikes = Array.from({length:5}, () => [-50, GROUND_Y+25, 2 + Math.random()*1.5]);
+let people = Array.from({length:10}, () => [Math.random()*W, GROUND_Y+20, 1 + Math.random()]);
+let smoke = Array.from({length:100}, () => [Math.random()*W, Math.random()*H, 0.5 + Math.random()*1.5]);
+
+let agriWaste = ["Dusa","Corn","Coffee","Karare"];
+let selectedWaste = null;
+let briquettes = 0;
+let maxBriquettes = 50;
+
+let victory = false;
+let sparkle = 0;
+
+// ---------------- DRAW ----------------
+function drawSky(progress){
+    for(let i=0;i<GROUND_Y;i++){
+        let r = 180 - 60*progress + i/6;
+        let g = 70 + 100*progress - i/6;
+        let b = 50 + 150*progress - i/7;
+        ctx.strokeStyle = `rgb(${r},${g},${b})`;
+        ctx.beginPath();
+        ctx.moveTo(0,i);
+        ctx.lineTo(W,i);
+        ctx.stroke();
+    }
+}
+
+function drawGround(progress){
+    let r = 60 + (60-60)*progress;
+    let g = 40 + (140-40)*progress;
+    let b = 25 + (70-25)*progress;
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(0,GROUND_Y,W,H-GROUND_Y);
+}
+
+function drawTrees(progress){
+    plantedTrees.forEach(([x,y])=>{
+        let h = 20 + 40*progress;
+        ctx.fillStyle = "brown";
+        ctx.fillRect(x,y-h,6,h);
+        ctx.beginPath();
+        ctx.arc(x+3,y-h,12,0,Math.PI*2);
+        ctx.fillStyle = "green";
+        ctx.fill();
+    });
+}
+
+function drawPeople(){
+    people.forEach(p=>{
+        p[0]+=p[2];
+        if(p[0]>W) p[0]=-30;
+        let [x,y]=p;
+        ctx.fillStyle="peachpuff";
+        ctx.beginPath(); ctx.arc(x,y,7,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle="green";
+        ctx.fillRect(x-6,y,12,22);
+    });
+}
+
+function drawBikes(progress){
+    if(progress<0.2) return;
+    bikes.forEach(b=>{
+        b[0]+=b[2];
+        if(b[0]>W) b[0]=-80;
+        let [x,y]=b;
+        ctx.strokeStyle="black";
+        ctx.beginPath(); ctx.arc(x,y,10,0,Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x+25,y,10,0,Math.PI*2); ctx.stroke();
+    });
+}
+
+function drawSmoke(progress){
+    smoke.forEach(s=>{
+        s[1]-=s[2];
+        if(s[1]<0) s[1]=H;
+        let alpha = 0.3*(1-progress);
+        ctx.fillStyle=`rgba(50,50,50,${alpha})`;
+        ctx.beginPath();
+        ctx.arc(s[0],s[1],20,0,Math.PI*2);
+        ctx.fill();
+    });
+}
+
+function drawUI(progress){
+    ctx.fillStyle="rgba(0,0,0,0.6)";
+    ctx.fillRect(20,20,320,260);
+
+    ctx.fillStyle="white";
+    ctx.font="20px Arial";
+    ctx.fillText(`Trees: ${score}/${targetTrees}`,30,50);
+    ctx.fillText(`Briquettes: ${briquettes}`,30,90);
+    ctx.fillText(`Waste: ${selectedWaste||"-"}`,30,130);
+
+    ctx.fillStyle="yellow";
+    ctx.fillText("Developed by:Abubakar Saidu Midala(Mysterious Global Tech) X QSIMPACT GOMBE COUNCIL TEAM",20,20);
+
+    ctx.fillStyle="white";
+    ctx.fillText("© QSIMPACT GOMBE COUNCIL",W-330,H-150,);
+}
+
+function drawVictory(){
+    sparkle+=0.05;
+    ctx.fillStyle="gold";
+    ctx.font="40px Verdana";
+    ctx.fillText("CONGRATULATIONS!",W/2-200,H/2-80);
+
+    for(let i=0;i<10;i++){
+        let x=W/2+Math.random()*100;
+        let y=H/2-80+Math.random()*30;
+        ctx.beginPath();
+        ctx.arc(x,y,5,0,Math.PI*2);
+        ctx.fill();
+    }
+}
+
+// ---------------- INPUT ----------------
+canvas.addEventListener("click", (e)=>{
+    let rect = canvas.getBoundingClientRect();
+    let mx = e.clientX - rect.left;
+    let my = e.clientY - rect.top;
+
+    if(my>GROUND_Y){
+        plantedTrees.push([mx,my]);
+        score++;
+    }
+
+    if(mx>20 && mx<180 && my>220 && my<250){
+        selectedWaste = agriWaste[Math.floor(Math.random()*agriWaste.length)];
+    }
+
+    if(mx>20 && mx<180 && my>260 && my<290 && selectedWaste){
+        if(briquettes<maxBriquettes){
+            briquettes++;
+        }
+    }
+});
+
+// ---------------- LOOP ----------------
+function loop(){
+    let progress = Math.min(1, score/targetTrees);
+
+    drawSky(progress);
+    drawGround(progress);
+    drawTrees(progress);
+    drawPeople();
+    drawBikes(progress);
+    drawSmoke(progress);
+    drawUI(progress);
+
+    if(progress>=1){
+        victory=true;
+        drawVictory();
+    }
+
+    requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
+</body>
+</html>
